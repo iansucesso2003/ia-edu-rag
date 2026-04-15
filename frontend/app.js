@@ -70,23 +70,31 @@ async function selectAgent(id) {
   renderAgentList();
   const agent = agents.find((a) => a.id === id);
   if (!agent) return;
-  showAgentDetail(agent);
   showChat(agent);
-  renderDocs(agent.documents);
   renderChat();
 }
 
 function showAgentDetail(agent) {
-  document.getElementById("emptyMain").classList.add("hidden");
-  document.getElementById("agentDetail").classList.remove("hidden");
-  document.getElementById("agentColorBadge").style.background = agent.color;
   document.getElementById("agentNameInput").value = agent.name;
   document.getElementById("agentDescInput").value = agent.description || "";
   document.getElementById("agentPromptInput").value = agent.system_prompt || "";
 }
 
+function openSettings() {
+  if (!selectedAgentId) return;
+  const agent = agents.find((a) => a.id === selectedAgentId);
+  if (!agent) return;
+  showAgentDetail(agent);
+  renderDocs(agent.documents);
+  document.getElementById("settingsOverlay").classList.remove("hidden");
+}
+
+function closeSettings() {
+  document.getElementById("settingsOverlay").classList.add("hidden");
+}
+
 function showChat(agent) {
-  document.getElementById("chatEmpty").classList.add("hidden");
+  document.getElementById("emptyMain").classList.add("hidden");
   document.getElementById("chatContainer").classList.remove("hidden");
   document.getElementById("chatAgentName").textContent = agent.name;
   document.getElementById("chatAgentDot").style.background = agent.color;
@@ -141,6 +149,7 @@ async function saveAgent() {
     if (idx !== -1) agents[idx] = { ...agents[idx], ...updated };
     document.getElementById("chatAgentName").textContent = updated.name;
     renderAgentList();
+    closeSettings();
     showToast("Agente salvo!");
   } catch (e) {
     showToast("Erro ao salvar.", true);
@@ -156,9 +165,8 @@ async function deleteAgent() {
     delete chatHistories[selectedAgentId];
     selectedAgentId = null;
     renderAgentList();
+    closeSettings();
     document.getElementById("emptyMain").classList.remove("hidden");
-    document.getElementById("agentDetail").classList.add("hidden");
-    document.getElementById("chatEmpty").classList.remove("hidden");
     document.getElementById("chatContainer").classList.add("hidden");
   } catch (e) {
     showToast("Erro ao excluir.", true);
@@ -410,7 +418,12 @@ function bindEvents() {
     if (e.key === "Enter") createAgent();
   });
 
-  // Agent detail
+  // Settings modal
+  document.getElementById("btnOpenSettings").addEventListener("click", openSettings);
+  document.getElementById("btnCloseSettings").addEventListener("click", closeSettings);
+  document.getElementById("settingsOverlay").addEventListener("click", (e) => {
+    if (e.target === document.getElementById("settingsOverlay")) closeSettings();
+  });
   document.getElementById("btnSaveAgent").addEventListener("click", saveAgent);
   document.getElementById("btnDeleteAgent").addEventListener("click", deleteAgent);
 
