@@ -5,9 +5,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-AGENTS_FILE = Path(__file__).parent / "agents.json"
-UPLOADS_DIR = Path(__file__).parent.parent / "uploads"
-CHROMA_DIR = Path(__file__).parent.parent / "chroma_db"
+import os
+
+_DATA_DIR = Path(os.getenv("DATA_DIR", str(Path(__file__).parent.parent)))
+AGENTS_FILE = _DATA_DIR / "agents.json"
+UPLOADS_DIR = _DATA_DIR / "uploads"
+CHROMA_DIR  = _DATA_DIR / "chroma_db"
+
+_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _load() -> dict:

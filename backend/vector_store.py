@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CHROMA_BASE = Path(__file__).parent.parent / "chroma_db"
+CHROMA_BASE = Path(os.getenv("DATA_DIR", str(Path(__file__).parent.parent))) / "chroma_db"
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
