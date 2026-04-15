@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# Env
+.env
+
+# Data (gerado em runtime)
+agents.json
+chroma_db/
+uploads/
+
+# OS
+.DS_Store

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BrusquetaIA</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── LEFT: Agent List ─────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1 class="logo">Brusqueta<span>IA</span></h1>
+      <button class="btn-new-agent" id="btnNewAgent">+ Novo Agente</button>
+    </div>
+    <div class="agent-list" id="agentList">
+      <p class="empty-hint">Nenhum agente criado.</p>
+    </div>
+  </aside>
+
+  <!-- ── CENTER: Agent Management ─────────────────────────────────────────── -->
+  <main class="main-panel">
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyMain">
+      <div class="empty-icon">🤖</div>
+      <h2>Selecione um agente</h2>
+      <p>Escolha ou crie um agente para gerenciar seus documentos.</p>
+    </div>
+
+    <!-- Detail view -->
+    <div class="agent-detail hidden" id="agentDetail">
+
+      <!-- Header -->
+      <div class="agent-header">
+        <div class="agent-color-badge" id="agentColorBadge"></div>
+        <div class="agent-title-group">
+          <input class="agent-name-input" id="agentNameInput" type="text" placeholder="Nome do agente" />
+          <input class="agent-desc-input" id="agentDescInput" type="text" placeholder="Descrição" />
+        </div>
+        <button class="btn-save" id="btnSaveAgent">Salvar</button>
+        <button class="btn-danger-sm" id="btnDeleteAgent">Excluir</button>
+      </div>
+
+      <!-- System Prompt Editor -->
+      <div class="prompt-section">
+        <div class="prompt-label-row">
+          <label for="agentPromptInput">System Prompt</label>
+          <span class="prompt-hint">Use <code>{context}</code> para posicionar os trechos dos documentos. Se omitido, o contexto é adicionado ao final.</span>
+        </div>
+        <textarea
+          id="agentPromptInput"
+          class="agent-prompt-input"
+          rows="5"
+          placeholder="Escreva o prompt completo do agente aqui...&#10;&#10;Exemplo:&#10;Você é um assistente especializado em contratos jurídicos.&#10;Responda SOMENTE com base nos documentos abaixo.&#10;Cite sempre o arquivo e a página.&#10;&#10;{context}"
+        ></textarea>
+      </div>
+
+      <!-- Upload Drop Zone -->
+      <div class="upload-section">
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">📄</div>
+          <p>Arraste PDFs aqui ou
+            <label class="file-label" for="fileInput">clique para selecionar</label>
+          </p>
+          <input type="file" id="fileInput" multiple accept=".pdf" hidden />
+        </div>
+        <div class="upload-progress-list" id="uploadProgressList"></div>
+      </div>
+
+      <!-- Document List -->
+      <div class="docs-section">
+        <h3>Documentos Indexados</h3>
+        <div class="docs-list" id="docsList">
+          <p class="no-docs">Nenhum documento indexado.</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── RIGHT: Chat ───────────────────────────────────────────────────────── -->
+  <aside class="chat-panel">
+
+    <div class="chat-empty" id="chatEmpty">
+      <div class="empty-icon">💬</div>
+      <h2>Selecione um agente para começar</h2>
+    </div>
+
+    <div class="chat-container hidden" id="chatContainer">
+      <div class="chat-header">
+        <div class="chat-agent-info">
+          <div class="chat-agent-dot" id="chatAgentDot"></div>
+          <span class="chat-agent-name" id="chatAgentName"></span>
+        </div>
+        <button class="btn-clear" id="btnClearChat">Limpar histórico</button>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-area">
+        <textarea id="chatInput" placeholder="Digite sua pergunta…" rows="2"></textarea>
+        <button class="btn-send" id="btnSend">Enviar</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ── Modal: New Agent ──────────────────────────────────────────────────── -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal">
+      <h2>Novo Agente</h2>
+
+      <label for="modalName">Nome *</label>
+      <input type="text" id="modalName" placeholder="Ex: Agente Jurídico" />
+
+      <label for="modalDesc">Descrição</label>
+      <input type="text" id="modalDesc" placeholder="Breve descrição" />
+
+      <label for="modalPrompt">
+        System Prompt
+        <span class="modal-prompt-hint">Use <code>{context}</code> para posicionar os documentos.</span>
+      </label>
+      <textarea
+        id="modalPrompt"
+        rows="5"
+        placeholder="Escreva as instruções do agente…&#10;&#10;Se deixar em branco, um prompt padrão seguro será usado."
+      ></textarea>
+
+      <label for="modalColor">Cor</label>
+      <input type="color" id="modalColor" value="#6366f1" />
+
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btnCancelModal">Cancelar</button>
+        <button class="btn-primary" id="btnCreateAgent">Criar Agente</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
