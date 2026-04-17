@@ -1,8 +1,9 @@
 import asyncio
+import uuid
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -23,6 +24,9 @@ app.add_middleware(
 import os
 UPLOADS_DIR = Path(os.getenv("DATA_DIR", str(Path(__file__).parent.parent))) / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+# In-memory job store: { job_id: { status, results, total, done } }
+_jobs: dict[str, dict] = {}
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -86,36 +90,64 @@ async def delete_agent(agent_id: str):
 # ─── Documents ────────────────────────────────────────────────────────────────
 
 
-@app.post("/agents/{agent_id}/upload")
-async def upload_files(agent_id: str, files: list[UploadFile] = File(...)):
-    if not agent_manager.get_agent(agent_id):
-        raise HTTPException(404, "Agent not found")
-
-    upload_dir = UPLOADS_DIR / agent_id
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    async def process_one(file: UploadFile) -> dict:
-        pdf_path = upload_dir / file.filename
-        pdf_path.write_bytes(await file.read())
+async def _process_files_bg(agent_id: str, files: list[tuple[Path, str]], job_id: str):
+    async def process_one(pdf_path: Path, filename: str) -> dict:
         try:
             chunks = await pdf_processor.process_pdf(pdf_path, agent_id)
             pages = max((c["page_num"] for c in chunks), default=0)
             has_any_image = any(c["has_image"] for c in chunks)
             vector_store.add_chunks(agent_id, chunks)
             doc_info = {
-                "pdf_name": file.filename,
+                "pdf_name": filename,
                 "pages": pages,
                 "chunks": len(chunks),
                 "has_image": has_any_image,
                 "status": "ok",
             }
             agent_manager.add_document(agent_id, doc_info)
-            return doc_info
         except Exception as exc:
-            return {"pdf_name": file.filename, "status": "error", "error": str(exc)}
+            doc_info = {"pdf_name": filename, "status": "error", "error": str(exc)}
 
-    results = await asyncio.gather(*[process_one(f) for f in files])
-    return {"results": list(results)}
+        _jobs[job_id]["done"] += 1
+        _jobs[job_id]["results"].append(doc_info)
+        return doc_info
+
+    await asyncio.gather(*[process_one(p, n) for p, n in files])
+    _jobs[job_id]["status"] = "done"
+
+
+@app.post("/agents/{agent_id}/upload", status_code=202)
+async def upload_files(
+    agent_id: str,
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(...),
+):
+    if not agent_manager.get_agent(agent_id):
+        raise HTTPException(404, "Agent not found")
+
+    upload_dir = UPLOADS_DIR / agent_id
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    saved: list[tuple[Path, str]] = []
+    for file in files:
+        pdf_path = upload_dir / file.filename
+        pdf_path.write_bytes(await file.read())
+        saved.append((pdf_path, file.filename))
+
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {"status": "processing", "results": [], "total": len(saved), "done": 0}
+
+    background_tasks.add_task(_process_files_bg, agent_id, saved, job_id)
+
+    return {"job_id": job_id, "total": len(saved)}
+
+
+@app.get("/agents/{agent_id}/jobs/{job_id}")
+async def get_job_status(agent_id: str, job_id: str):
+    job = _jobs.get(job_id)
+    if not job:
+        raise HTTPException(404, "Job not found")
+    return job
 
 
 @app.get("/agents/{agent_id}/documents")

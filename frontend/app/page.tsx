@@ -16,6 +16,7 @@ export default function Home() {
   const [showCreate, setShowCreate] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [toast, setToast] = useState<{ msg: string; error?: boolean } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const showToast = useCallback((msg: string, error = false) => {
     setToast({ msg, error });
@@ -59,13 +60,24 @@ export default function Home() {
     if (!selectedAgent) return [];
     const formData = new FormData();
     files.forEach((f) => formData.append("files", f));
-    const { results } = await request<{ results: { pdf_name: string; status: string; error?: string; chunks?: number; pages?: number }[] }>(
+
+    const { job_id } = await request<{ job_id: string; total: number }>(
       "POST", `/agents/${selectedAgent.id}/upload`, formData
     );
-    const updated = await request<Agent>("GET", `/agents/${selectedAgent.id}`);
-    setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-    setSelectedAgent(updated);
-    return results;
+
+    // Poll until processing is complete (handles Railway timeout)
+    while (true) {
+      await new Promise((r) => setTimeout(r, 2500));
+      const job = await request<{ status: string; results: { pdf_name: string; status: string; error?: string; chunks?: number; pages?: number }[]; done: number; total: number }>(
+        "GET", `/agents/${selectedAgent.id}/jobs/${job_id}`
+      );
+      if (job.status === "done") {
+        const updated = await request<Agent>("GET", `/agents/${selectedAgent.id}`);
+        setAgents((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+        setSelectedAgent(updated);
+        return job.results;
+      }
+    }
   };
 
   const handleRemoveDoc = async (pdfName: string) => {
@@ -107,6 +119,8 @@ export default function Home() {
       <Sidebar
         agents={agents}
         selectedId={selectedAgent?.id ?? null}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen((v) => !v)}
         onSelect={(id) => setSelectedAgent(agents.find((a) => a.id === id) ?? null)}
         onNewAgent={() => setShowCreate(true)}
       />

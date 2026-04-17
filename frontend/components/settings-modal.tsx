@@ -23,6 +23,7 @@ export function SettingsModal({ agent, onClose, onSave, onDelete, onUpload, onRe
   const [systemPrompt, setSystemPrompt] = useState(agent.system_prompt);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [uploadResults, setUploadResults] = useState<{ name: string; ok: boolean; msg: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,14 +46,18 @@ export function SettingsModal({ agent, onClose, onSave, onDelete, onUpload, onRe
     if (!pdfs.length) return;
     setUploading(true);
     setUploadResults([]);
+    setUploadProgress(`Enviando ${pdfs.length} arquivo${pdfs.length > 1 ? "s" : ""}…`);
     try {
+      setUploadProgress("Processando em background, pode fechar este modal…");
       const results = await onUpload(pdfs);
+      setUploadProgress("");
       setUploadResults(results.map((r) => ({
         name: r.pdf_name,
         ok: r.status === "ok",
         msg: r.status === "ok" ? `${r.chunks} chunks · ${r.pages} págs` : r.error ?? "Erro",
       })));
     } catch {
+      setUploadProgress("");
       setUploadResults([{ name: "Upload", ok: false, msg: "Falha no upload" }]);
     } finally {
       setUploading(false);
@@ -106,7 +111,9 @@ export function SettingsModal({ agent, onClose, onSave, onDelete, onUpload, onRe
               onChange={(e) => handleFiles(e.target.files)} />
           </div>
 
-          {uploading && <p className="text-xs text-slate-500 mt-2 animate-pulse">Processando documentos…</p>}
+          {uploading && uploadProgress && (
+            <p className="text-xs text-slate-500 mt-2 animate-pulse">{uploadProgress}</p>
+          )}
           {uploadResults.length > 0 && (
             <div className="mt-2 flex flex-col gap-1">
               {uploadResults.map((r, i) => (
