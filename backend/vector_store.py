@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import chromadb
-from chromadb.utils import embedding_functions
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,8 +11,16 @@ CHROMA_BASE = Path(os.getenv("DATA_DIR", str(Path(__file__).parent.parent))) / "
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+_openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
 # Per-agent cache: { agent_id -> (client, collection) }
 _cache: dict[str, tuple] = {}
+
+
+class _EmbeddingFunction:
+    def __call__(self, input: list[str]) -> list[list[float]]:
+        response = _openai_client.embeddings.create(input=input, model=EMBEDDING_MODEL)
+        return [item.embedding for item in response.data]
 
 
 def _get_collection(agent_id: str) -> chromadb.Collection:
@@ -21,10 +29,7 @@ def _get_collection(agent_id: str) -> chromadb.Collection:
         Path(db_path).mkdir(parents=True, exist_ok=True)
 
         chroma_client = chromadb.PersistentClient(path=db_path)
-        ef = embedding_functions.OpenAIEmbeddingFunction(
-            api_key=OPENAI_API_KEY,
-            model_name=EMBEDDING_MODEL,
-        )
+        ef = _EmbeddingFunction()
         collection = chroma_client.get_or_create_collection(
             name=f"agent_{agent_id.replace('-', '_')}",
             embedding_function=ef,
